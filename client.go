@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net"
 	"strings"
+
+	"github.com/TwiN/go-color"
 )
 
 type client struct {
@@ -21,13 +23,13 @@ func (c *client) readInput() {
 		if err != nil {
 			return
 		}
-		msg = strings.Trim(msg, "\r\n")
+		msg = strings.Trim(msg, "\r\n ")
 		args := strings.Split(msg, " ")
 		cmd := strings.TrimSpace(args[0])
 
 		switch cmd {
 		case "":
-			c.conn.Write([]byte("> "))
+			c.commands <- command{CMD_EMPTY_LINE, c, args}
 		case "/commands":
 			c.commands <- command{CMD_LIST_COMMANDS, c, args}
 		case "/quit":
@@ -47,13 +49,13 @@ func (c *client) readInput() {
 }
 
 func (c *client) msg(msg string) {
-	c.conn.Write([]byte(fmt.Sprintf("%s\n", msg)))
+	c.conn.Write([]byte(color.With(color.Gray, fmt.Sprintf("%s\n", msg))))
 }
 
 func (c *client) prompt() {
-	c.conn.Write([]byte("> "))
+	c.conn.Write([]byte(color.With(color.Bold, "> ")))
 }
 
 func (c *client) err(err error) {
-	c.conn.Write([]byte(fmt.Sprintf("ERR: %s\n", err.Error())))
+	c.conn.Write([]byte(color.With(color.Red, fmt.Sprintf("Err: %s\n", err.Error()))))
 }

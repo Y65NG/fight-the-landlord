@@ -9,6 +9,7 @@ const (
 	CMD_VIEW_CARDS
 	CMD_USE_CARDS
 	CMD_PASS
+	CMD_EMPTY_LINE
 )
 
 type command struct {
