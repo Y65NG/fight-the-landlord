@@ -98,7 +98,7 @@ func Valid(cards []*Card) bool {
 	if len(cards) == 0 {
 		return true
 	}
-	if isSingle(cards) || isDouble(cards) || isBomb(cards) || isStraight(cards) || isDoubleStraight(cards) || isTripleWithOne(cards) || isTripleWithTwo(cards) {
+	if isSingle(cards) || isDouble(cards) || isBomb(cards) || isStraight(cards) || isDoubleStraight(cards) || isTripleWithOne(cards) || isTripleWithTwo(cards) || isPlane(cards) {
 		return true
 	}
 	return false
@@ -160,6 +160,23 @@ func Sort(cards []*Card) {
 				break
 			}
 		}
+	case len(cards) == 6 || len(cards) == 8 || len(cards) == 10:
+		for i := 0; i < len(cards)-2; i++ {
+			if cards[i].Point == cards[i+1].Point && cards[i].Point == cards[i+2].Point {
+				cards[0], cards[i] = cards[i], cards[0]
+				cards[1], cards[i+1] = cards[i+1], cards[1]
+				cards[2], cards[i+2] = cards[i+2], cards[2]
+				break
+			}
+		}
+		for i := 3; i < len(cards)-2; i++ {
+			if cards[i].Point == cards[i+1].Point && cards[i].Point == cards[i+2].Point {
+				cards[3], cards[i] = cards[i], cards[3]
+				cards[4], cards[i+1] = cards[i+1], cards[4]
+				cards[5], cards[i+2] = cards[i+2], cards[5]
+				break
+			}
+		}
 	}
 }
 
@@ -205,6 +222,10 @@ func CompareTo(cards, lastCards []*Card) bool {
 			}
 		case isDoubleStraight(cards):
 			if !isDoubleStraight(lastCards) || cards[0].Point <= lastCards[0].Point {
+				return false
+			}
+		case isPlane(cards):
+			if !isPlane(lastCards) || cards[0].Point <= lastCards[0].Point {
 				return false
 			}
 		}
@@ -285,6 +306,27 @@ func isDoubleStraight(cards []*Card) bool {
 			return false
 		}
 		if cards[i].Point != cards[i+2].Point-1 {
+			return false
+		}
+	}
+	return true
+}
+
+func isPlane(cards []*Card) bool {
+	if len(cards) != 6 && len(cards) != 8 && len(cards) != 10 {
+		return false
+	}
+	if cards[0].Point != cards[3].Point - 1 {
+		return false
+	}
+
+	for i := 0; i < 6; i += 3 {
+		if cards[i].Point != cards[i+1].Point || cards[i].Point != cards[i+2].Point {
+			return false
+		}
+	}
+	if len(cards) == 10 {
+		if cards[6].Point != cards[7].Point || cards[8].Point != cards[9].Point {
 			return false
 		}
 	}
