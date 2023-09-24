@@ -63,7 +63,6 @@ func (p *Player) Use(cardsInfo []*Card, lastCardsInfo []*Card) error {
 		}
 	}
 	slices.Sort(removedCardsIdx)
-	log.Println(removedCardsIdx)
 	for i := len(removedCardsIdx) - 1; i >= 0; i-- {
 		p.Cards = append(p.Cards[:removedCardsIdx[i]], p.Cards[removedCardsIdx[i]+1:]...)
 	}
