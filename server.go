@@ -4,11 +4,13 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"landlord/util"
 	"log"
 	"net"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -44,7 +46,29 @@ func (s *server) newClient(conn net.Conn) {
 	c.nick = nickname
 	c.msg(fmt.Sprintf("welcome to the server, %s \ntype /ready to join the game or /commands to see available commands", nickname))
 	c.prompt()
+	s.broadcast(c, fmt.Sprintf("%s join the game", c.nick))
 	go c.readInput()
+}
+
+func (s *server) removeClosedClient() {
+	for {
+		for addr, client := range s.members {
+			buf := make([]byte, 1, 1)
+			_, err := client.conn.Read(buf)
+			log.Println(buf)
+			if err != nil && !(errors.Is(err, net.ErrClosed) &&
+				errors.Is(err, io.EOF) &&
+				errors.Is(err, syscall.EPIPE)) {
+				log.Println("client has disconnected:", addr)
+				s.broadcast(nil, fmt.Sprintf("%s quit the game", client.nick))
+				client.conn.Close()
+				delete(s.members, addr)
+				log.Println(s.members)
+			}
+
+		}
+	}
+
 }
 
 func (s *server) runCommands() {
@@ -57,6 +81,8 @@ func (s *server) runCommands() {
 			}
 		case CMD_LIST_COMMANDS:
 			s.listCommands(sender)
+		case CMD_LIST_PLAYERS:
+			s.listPlayers(sender)
 		case CMD_QUIT:
 			s.quit(sender)
 		case CMD_READY:
@@ -87,6 +113,11 @@ func (s *server) runCommands() {
 				s.pass(sender)
 			} else {
 				sender.err(errors.New("you must first join a game"))
+				sender.prompt()
+			}
+		case CMD_UNKNOWN:
+			sender.err(errors.New("unknown command. Type /commands to see available commands"))
+			if s.game.State == util.STATE_WAITING || sender.conn.RemoteAddr() == s.game.CurrentPlayer.Conn.RemoteAddr() {
 				sender.prompt()
 			}
 		}
@@ -190,10 +221,21 @@ func (s *server) listCommands(sender *client) {
 	}
 }
 
+func (s *server) listPlayers(sender *client) {
+	sender.msg("online players:")
+	for _, c := range s.members {
+		sender.msg(c.nick)
+	}
+	if s.game.State == util.STATE_WAITING || sender.conn.RemoteAddr() == s.game.CurrentPlayer.Conn.RemoteAddr() {
+		sender.prompt()
+	}
+}
+
 func (s *server) quit(c *client) {
 	c.msg("see you next time")
-	s.broadcast(c, fmt.Sprintf("%s has left the room\n", c.nick))
+	s.broadcast(c, fmt.Sprintf("%s has left the room", c.nick))
 	s.game.RemovePlayer(c.conn)
+	delete(s.members, c.conn.RemoteAddr())
 	log.Printf("client has disconnected: %s\n", c.nick)
 	c.conn.Close()
 }
@@ -232,7 +274,7 @@ func (s *server) useCards(c *client, args []string) {
 	var cards []*util.Card
 	var invalidCards []string
 	for _, s := range cardsString {
-		switch s {
+		switch strings.ToUpper(s) {
 		case "A":
 			cards = append(cards, &util.Card{Point: util.ACE})
 		case "2":
@@ -259,10 +301,12 @@ func (s *server) useCards(c *client, args []string) {
 			cards = append(cards, &util.Card{Point: util.QUEEN})
 		case "K":
 			cards = append(cards, &util.Card{Point: util.KING})
-		case "joker":
-			cards = append(cards, &util.Card{Point: util.BLACK_JOKER})
 		case "JOKER":
-			cards = append(cards, &util.Card{Point: util.RED_JOKER})
+			if s == "joker" {
+				cards = append(cards, &util.Card{Point: util.BLACK_JOKER})
+			} else {
+				cards = append(cards, &util.Card{Point: util.RED_JOKER})
+			}
 		default:
 			invalidCards = append(invalidCards, s)
 		}

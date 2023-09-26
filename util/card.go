@@ -98,7 +98,7 @@ func Valid(cards []*Card) bool {
 	if len(cards) == 0 {
 		return true
 	}
-	if isSingle(cards) || isDouble(cards) || isBomb(cards) || isStraight(cards) || isDoubleStraight(cards) || isTripleWithOne(cards) || isTripleWithTwo(cards) || isPlane(cards) {
+	if isSingle(cards) || isDouble(cards) || isBomb(cards) || isStraight(cards) || isDoubleStraight(cards) || isTriple(cards) || isTripleWithOne(cards) || isTripleWithTwo(cards) || isPlane(cards) {
 		return true
 	}
 	return false
@@ -140,7 +140,7 @@ func Sort(cards []*Card) {
 		}
 	})
 	switch {
-	case isSingle(cards) || isDouble(cards) || isBomb(cards) || isStraight(cards) || isDoubleStraight(cards):
+	case isSingle(cards) || isDouble(cards) || isBomb(cards) || isStraight(cards) || isDoubleStraight(cards) || isTriple(cards):
 		return
 	case len(cards) == 4:
 		for i := 0; i < len(cards)-2; i++ {
@@ -200,7 +200,7 @@ func CompareTo(cards, lastCards []*Card) bool {
 		}
 	case len(cards) == len(lastCards):
 		switch {
-		case isSingle(cards):
+		case isSingle(cards), isTriple(cards):
 			if cards[0].Point <= lastCards[0].Point {
 				return false
 			}
@@ -229,6 +229,8 @@ func CompareTo(cards, lastCards []*Card) bool {
 				return false
 			}
 		}
+	default:
+		return false
 	}
 	return true
 }
@@ -257,6 +259,16 @@ func isDouble(cards []*Card) bool {
 		return false
 	}
 	if cards[0].Point != cards[1].Point {
+		return false
+	}
+	return true
+}
+
+func isTriple(cards []*Card) bool {
+	if len(cards) != 3 {
+		return false
+	}
+	if cards[0].Point != cards[1].Point || cards[0].Point != cards[2].Point {
 		return false
 	}
 	return true
@@ -316,7 +328,7 @@ func isPlane(cards []*Card) bool {
 	if len(cards) != 6 && len(cards) != 8 && len(cards) != 10 {
 		return false
 	}
-	if cards[0].Point != cards[3].Point - 1 {
+	if cards[0].Point != cards[3].Point-1 {
 		return false
 	}
 

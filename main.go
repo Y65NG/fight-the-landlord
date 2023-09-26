@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	listen, err := net.Listen("tcp", ":8888")
+	listen, err := net.Listen("tcp", "0.0.0.0:8888")
 	if err != nil {
 		log.Fatalf("unable to start server: %s", err.Error())
 	}
@@ -16,6 +16,7 @@ func main() {
 	server := newServer()
 	go server.runCommands()
 	go server.gameLoop()
+	// go server.removeClosedClient()
 
 	for {
 		conn, err := listen.Accept()

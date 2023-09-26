@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"net"
 	"strings"
@@ -32,6 +31,8 @@ func (c *client) readInput() {
 			c.commands <- command{CMD_EMPTY_LINE, c, args}
 		case "/commands":
 			c.commands <- command{CMD_LIST_COMMANDS, c, args}
+		case "/list":
+			c.commands <- command{CMD_LIST_PLAYERS, c, args}
 		case "/quit":
 			c.commands <- command{CMD_QUIT, c, args}
 		case "/ready":
@@ -43,7 +44,8 @@ func (c *client) readInput() {
 		case "/pass":
 			c.commands <- command{CMD_PASS, c, args}
 		default:
-			c.err(errors.New("unknown command. Type /commands to see available commands"))
+			c.commands <- command{CMD_UNKNOWN, c, args}
+
 		}
 	}
 }
