@@ -5,7 +5,8 @@ import (
 	"sync"
 )
 
-// import "fmt"
+const NUM_PLAYERS = 3
+
 type GameState int
 
 const (
@@ -14,11 +15,11 @@ const (
 	STATE_OVER
 )
 
-const NUM_PLAYERS = 2
-
 type Game struct {
 	// Players          map[net.Addr]*Player
 	Players          sync.Map
+	NumPlayers       int
+	PlayerNum        int
 	Deck             Deck
 	State            GameState
 	CurrentUsedCards chan []*Card
@@ -33,6 +34,8 @@ func NewGame() *Game {
 	deck.Shuffle()
 	return &Game{
 		Players:          sync.Map{},
+		NumPlayers:       NUM_PLAYERS,
+		PlayerNum:        0,
 		Deck:             deck,
 		State:            STATE_WAITING,
 		CurrentUsedCards: make(chan []*Card, 1),
@@ -41,11 +44,22 @@ func NewGame() *Game {
 
 func (g *Game) AddPlayer(conn net.Conn) {
 	g.Players.Store(conn.RemoteAddr(), NewPlayer(conn))
+	g.PlayerNum++
 }
 
-func (g *Game) RemovePlayer(conn net.Conn) {
-	g.Players.Delete(conn.RemoteAddr())
+func (g *Game) RemovePlayer(conn net.Conn) bool {
+	if _, ok := g.Players.LoadAndDelete(conn.RemoteAddr()); ok {
+		g.PlayerNum--
+		return true
+	}
+	return false
 }
+
+func (g *Game) ContainsPlayer(addr net.Addr) bool {
+	_, ok := g.Players.Load(addr)
+	return ok
+}
+
 
 func (g *Game) NextState() {
 	switch g.State {

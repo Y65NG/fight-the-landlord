@@ -16,47 +16,47 @@ func (c Card) String() string {
 	var point string
 	switch c.Color {
 	case SPADE:
-		color = "♠️"
+		color = "♠"
 	case CLUBS:
-		color = "♣️"
+		color = "♣"
 	case HEART:
-		color = "❤️"
+		color = "♥"
 	case DIAMOND:
-		color = "♦️"
+		color = "♦"
 	}
 	switch c.Point {
 	case THREE:
-		point = "3"
+		point = " 3"
 	case FOUR:
-		point = "4"
+		point = " 4"
 	case FIVE:
-		point = "5"
+		point = " 5"
 	case SIX:
-		point = "6"
+		point = " 6"
 	case SEVEN:
-		point = "7"
+		point = " 7"
 	case EIGHT:
-		point = "8"
+		point = " 8"
 	case NINE:
-		point = "9"
+		point = " 9"
 	case TEN:
-		point = "10"
+		point = " 10"
 	case JACK:
-		point = "J"
+		point = " J"
 	case QUEEN:
-		point = "Q"
+		point = " Q"
 	case KING:
-		point = "K"
+		point = " K"
 	case ACE:
-		point = "A"
+		point = " A"
 	case TWO:
-		point = "2"
+		point = " 2"
 	case BLACK_JOKER:
 		point = "joker"
 	case RED_JOKER:
 		point = "JOKER"
 	}
-	return fmt.Sprintf("%v %v", color, point)
+	return fmt.Sprintf("%v%v", color, point)
 }
 
 func (c Card) Equal(c2 Card) bool {

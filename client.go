@@ -23,6 +23,10 @@ func (c *client) readInput() {
 			return
 		}
 		msg = strings.Trim(msg, "\r\n ")
+		if len(msg) > 0 && msg[0] != '/' {
+			c.commands <- command{CMD_MESSAGE, c, []string{msg}}
+			continue
+		}
 		args := strings.Split(msg, " ")
 		cmd := strings.TrimSpace(args[0])
 
@@ -51,7 +55,7 @@ func (c *client) readInput() {
 }
 
 func (c *client) msg(msg string) {
-	c.conn.Write([]byte(color.With(color.Gray, fmt.Sprintf("%s\n", msg))))
+	c.conn.Write([]byte(fmt.Sprintf("%s\n", msg)))
 }
 
 func (c *client) prompt() {

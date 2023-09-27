@@ -2,7 +2,6 @@ package util
 
 import (
 	"errors"
-	"log"
 	"net"
 	"strings"
 
@@ -43,12 +42,12 @@ func (p *Player) Use(cardsInfo []*Card, lastCardsInfo []*Card) error {
 		return errors.New("invalid cards")
 	}
 
-	if !CompareTo(cardsInfo, lastCardsInfo) {
-		return errors.New("cards can't beat last played cards")
-	}
-
 	if !Contains(p.Cards, cardsInfo) {
 		return errors.New("you don't have the cards")
+	}
+
+	if !CompareTo(cardsInfo, lastCardsInfo) {
+		return errors.New("cards can't beat last played cards")
 	}
 
 	var removedCardsIdx []int
@@ -68,7 +67,6 @@ func (p *Player) Use(cardsInfo []*Card, lastCardsInfo []*Card) error {
 	}
 
 	p.Sort()
-	log.Println(p.Cards)
 	return nil
 }
 
