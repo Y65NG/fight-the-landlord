@@ -14,7 +14,7 @@ func main() {
 		log.Fatalf("unable to open log file: %s", err.Error())
 	}
 	defer f.Close()
-	// log.SetOutput(f)
+	log.SetOutput(f)
 	log.Println("______________________")
 	listen, err := net.Listen("tcp", "0.0.0.0:8888")
 	if err != nil {

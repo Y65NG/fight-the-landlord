@@ -64,6 +64,7 @@ const (
 	MSG_INFO
 	MSG_CHAT
 	MSG_ROOM_INFO
+	MSG_STOP
 )
 
 type Message struct {
@@ -73,15 +74,13 @@ type Message struct {
 }
 
 func (c *client) msg(msgType messageType, msg string) {
-	// c.Conn.Write([]byte(fmt.Sprintf("%s\n", msg)))
 	byts, err := json.Marshal(Message{msgType, msg, c.Nick})
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	log.Println(string(byts))
 	c.Conn.Write([]byte(string(byts) + "\n"))
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(300 * time.Millisecond)
 	log.Printf("%v (%v) <- %v", c.Nick, c.Conn.RemoteAddr(), strings.Trim(msg, "\r\n\b "))
 }
 
@@ -90,7 +89,7 @@ func (c *client) msg(msgType messageType, msg string) {
 // }
 
 func (c *client) err(e error) {
-	// c.Conn.Write([]byte(color.InRed(fmt.Sprintf("Err: %s\n", e.Error()))))
+
 	byts, err := json.Marshal(Message{MSG_INFO, e.Error(), c.Nick})
 	if err != nil {
 		log.Println(err)

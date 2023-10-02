@@ -75,7 +75,7 @@ func (g *Game) NextState() {
 func State(state GameState) string {
 	switch state {
 	case STATE_WAITING:
-		return "Waiting for players..."
+		return "Pending..."
 	case STATE_PLAYING:
 		return "In game"
 	case STATE_OVER:

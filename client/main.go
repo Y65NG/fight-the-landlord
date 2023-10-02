@@ -9,6 +9,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/rivo/tview"
 )
 
 var msgChan = make(chan message, 10)
@@ -20,6 +22,9 @@ func main() {
 		log.Fatalf("unable to open log file: %s", err.Error())
 	}
 	defer f.Close()
+	app := tview.NewApplication()
+	defer app.Stop()
+
 	log.SetOutput(f)
 	log.Println("______________________")
 	args := os.Args[1:]
@@ -42,8 +47,8 @@ func main() {
 	log.Println("Done")
 	go sendData(conn)
 	go listenData(conn)
-	time.Sleep(100 * time.Millisecond)
-	Run()
+	time.Sleep(200 * time.Millisecond)
+	Run(app)
 
 }
 
@@ -62,7 +67,7 @@ func setName(conn net.Conn, done chan struct{}) {
 				}
 				conn.Write([]byte(line + "\n"))
 			}
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(1 * time.Second)
 		}
 	}()
 	go func() {
@@ -93,7 +98,7 @@ func sendData(conn net.Conn) {
 		_, err := conn.Write([]byte(line + "\n"))
 		if err != nil {
 			// log.Println(err)
-			panic(err)
+			os.Exit(1)
 		}
 
 	}
@@ -118,8 +123,8 @@ func listenData(conn net.Conn) {
 		}
 		// err = json.Unmarshal(buf[:n], &msg)
 		// if err != nil {
-			// log.Println(string(buf[:n]))	
-			// panic(err)
+		// log.Println(string(buf[:n]))
+		// panic(err)
 		// }
 		// log.Println(msg)
 		// msgChan <- msg

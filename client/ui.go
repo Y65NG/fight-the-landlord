@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"strings"
+	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -34,20 +35,21 @@ func drawSidebar() (*tview.Grid, *tview.TextView, *tview.TextView, *tview.TextVi
 	chatView.SetTextColor(bgColor)
 	setBoxAttr(chatView.Box, "Chat")
 
-	helperView := tview.NewTextView().SetDynamicColors(true)
-	helperView.SetBackgroundColor(bgColor)
-	helperView.SetTextColor(bgColor)
-	setBoxAttr(helperView.Box, "Help")
+	infoView := tview.NewTextView().SetDynamicColors(true)
+	infoView.SetBackgroundColor(bgColor)
+	infoView.SetTextColor(bgColor)
+	setBoxAttr(infoView.Box, "Info")
 
 	sidebarGrid.
 		AddItem(roomInfoView, 0, 0, 1, 1, 0, 0, false).
 		AddItem(chatView, 1, 0, 1, 1, 0, 0, false).
-		AddItem(helperView, 2, 0, 1, 1, 0, 0, false)
-	return sidebarGrid, roomInfoView, chatView, helperView
+		AddItem(infoView, 2, 0, 1, 1, 0, 0, false)
+
+	return sidebarGrid, roomInfoView, chatView, infoView
 }
 
-func drawMainPanel() (*tview.Grid, *tview.TextView, *tview.TextView, *tview.TextView, *tview.InputField) {
-	mainPanelGrid := tview.NewGrid().SetRows(-1, 6, 3, 3).SetBorders(false)
+func drawMainPanel() (*tview.Grid, *tview.TextView, *tview.TextView, *tview.InputField) {
+	mainPanelGrid := tview.NewGrid().SetRows(-1, 6, 3).SetBorders(false)
 	messagesView := tview.NewTextView().SetDynamicColors(true)
 	messagesView.SetBackgroundColor(bgColor)
 	messagesView.SetTextColor(bgColor)
@@ -58,9 +60,6 @@ func drawMainPanel() (*tview.Grid, *tview.TextView, *tview.TextView, *tview.Text
 	statusView.SetTextColor(bgColor)
 	setBoxAttr(statusView.Box, "Status")
 
-	infoView := tview.NewTextView().SetDynamicColors(true)
-	infoView.SetBackgroundColor(bgColor)
-	infoView.SetTextColor(bgColor)
 	// setBoxAttr(infoView.Box, "Info")
 
 	input := tview.NewInputField()
@@ -70,22 +69,14 @@ func drawMainPanel() (*tview.Grid, *tview.TextView, *tview.TextView, *tview.Text
 	mainPanelGrid.
 		AddItem(messagesView, 0, 0, 1, 1, 0, 0, false).
 		AddItem(statusView, 1, 0, 1, 1, 0, 0, false).
-		AddItem(infoView, 2, 0, 1, 1, 0, 0, false).
-		AddItem(input, 3, 0, 1, 1, 0, 0, true)
-	return mainPanelGrid, messagesView, statusView, infoView, input
+		AddItem(input, 2, 0, 1, 1, 0, 0, true)
+	return mainPanelGrid, messagesView, statusView, input
 }
 
 func draw(app *tview.Application) *tview.Grid {
-	sidebarGrid, roomInfoView, chatView, helperView := drawSidebar()
-	helperView.SetText(
-		`Type slash (/) to start a command.
-Available commands:
-- /ready: be ready for the game
-- /use card1 card2...: use the cards you selected
-- /pass: pass your current turn
-- /quit: quit the game`)
-	mainPanelGrid, messagesView, statusView, infoView, input := drawMainPanel()
-	rootGrid := tview.NewGrid().SetColumns(-1, -2).SetBorders(false)
+	sidebarGrid, roomInfoView, chatView, infoView := drawSidebar()
+	mainPanelGrid, messagesView, statusView, input := drawMainPanel()
+	rootGrid := tview.NewGrid().SetColumns(-3, -5).SetBorders(false)
 	rootGrid.
 		AddItem(sidebarGrid, 0, 0, 1, 1, 0, 0, false).
 		AddItem(mainPanelGrid, 0, 1, 1, 1, 0, 0, true)
@@ -100,14 +91,39 @@ Available commands:
 		}
 	})
 
+	input.SetAutocompleteFunc(func(currentText string) (entries []string) {
+		if len(currentText) == 0 || currentText[0] != '/' {
+			return
+		}
+		cmds := []string{"/ready (ready for game)", "/use card1 card2.. (play selected cards) ", "/pass (pass current turn)", "/quit (quit the game)"}
+		for _, entry := range cmds {
+			if strings.HasPrefix(entry, currentText) {
+				entries = append(entries, entry)
+			}
+		}
+		return
+	})
+	input.SetPlaceholder(" Type / to start a command")
+	input.SetPlaceholderStyle(tcell.StyleDefault.Background(tcell.ColorDefault).Foreground(tcell.ColorDarkGray))
+	input.SetAutocompleteStyles(
+		tcell.ColorLightGray,
+		tcell.StyleDefault.Foreground(tcell.ColorBlack),
+		tcell.StyleDefault.Background(tcell.ColorDimGray).Foreground(tcell.ColorWhite),
+	)
+	input.SetAutocompletedFunc(func(text string, index, source int) bool {
+		if source != tview.AutocompletedNavigate {
+			cmd := strings.Split(text, " ")[0]
+			input.SetText(cmd)
+		}
+		return source == tview.AutocompletedEnter || source == tview.AutocompletedClick
+	})
+
 	go handleMessages(app, messagesView, roomInfoView, statusView, chatView, infoView)
 
 	return rootGrid
 }
 
-func Run() {
-	app := tview.NewApplication()
-
+func Run(app *tview.Application) {
 	if err := app.SetRoot(draw(app), true).EnableMouse(true).Run(); err != nil {
 		panic(err)
 	}
@@ -143,7 +159,6 @@ func handleMessages(
 				app.Draw()
 			})
 			statusView.Highlight(highlights...)
-			
 
 		case MSG_INFO:
 			infoView.SetText(infoView.GetText(false) + " " + message.Content + "\n")
@@ -157,7 +172,15 @@ func handleMessages(
 			roomInfoMsgs := strings.Split(message.Content, "_")
 			roomInfoStr := "Status: " + roomInfoMsgs[0] + "\nPlayers:\n" + roomInfoMsgs[1]
 			roomInfoView.SetText(roomInfoStr)
+		case MSG_STOP:
+			history = append(history, message.Content)
+			log.Println(message.Content)
+			messagesView.SetText(strings.Join(history, "\n"))
+			messagesView.ScrollToEnd()
+			app.Draw()
+			time.Sleep(1 * time.Second)
+			app.Stop()
 		}
-		app.Draw()
+		app.Sync().Draw()
 	}
 }

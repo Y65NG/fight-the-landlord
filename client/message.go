@@ -9,6 +9,7 @@ const (
 	MSG_INFO
 	MSG_CHAT
 	MSG_ROOM_INFO
+	MSG_STOP
 )
 
 // type client struct {

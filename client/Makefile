@@ -4,6 +4,7 @@ build:
 	GOARCH=amd64 GOOS=darwin go build -o ./bin/${BINARY_NAME}-darwin-x64
 	GOARCH=arm64 GOOS=darwin go build -o ./bin/${BINARY_NAME}-darwin-arm
 	GOARCH=amd64 GOOS=linux go build -o ./bin/${BINARY_NAME}-linux
+	GOARCH=amd64 GOOS=windows go build -o ./bin/${BINARY_NAME}-windows.exe
 run: build
 	./bin/${BINARY_NAME}-darwin-arm
 
