@@ -9,10 +9,7 @@ run: build
 
 clean:
 	go clean
-	rm ./bin/${BINARY_NAME}-darwin-x64
-	rm ./bin/${BINARY_NAME}-darwin-arm
-	rm ./bin/${BINARY_NAME}-linux
-	rm ./bin/${BINARY_NAME}-windows
+	rm -r ./bin/
 
 test:
 	go test ./...

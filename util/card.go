@@ -94,7 +94,6 @@ const (
 )
 
 func Valid(cards []*Card) bool {
-	Sort(cards)
 	if len(cards) == 0 {
 		return true
 	}
@@ -181,8 +180,7 @@ func Sort(cards []*Card) {
 }
 
 func CompareTo(cards, lastCards []*Card) bool {
-	Sort(cards)
-	Sort(lastCards)
+	// cards and lastCards are sorted
 	if !Valid(cards) || !Valid(lastCards) {
 		return false
 	}

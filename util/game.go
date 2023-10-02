@@ -42,8 +42,8 @@ func NewGame() *Game {
 	}
 }
 
-func (g *Game) AddPlayer(conn net.Conn) {
-	g.Players.Store(conn.RemoteAddr(), NewPlayer(conn))
+func (g *Game) AddPlayer(conn net.Conn, nick string) {
+	g.Players.Store(conn.RemoteAddr(), NewPlayer(conn, nick))
 	g.PlayerNum++
 }
 
@@ -70,6 +70,18 @@ func (g *Game) NextState() {
 	case STATE_OVER:
 		g.State = STATE_WAITING
 	}
+}
+
+func State(state GameState) string {
+	switch state {
+	case STATE_WAITING:
+		return "Waiting for players..."
+	case STATE_PLAYING:
+		return "In game"
+	case STATE_OVER:
+		return "Game over"
+	}
+	return ""
 }
 
 func (g *Game) NumReady() int {

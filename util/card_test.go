@@ -6,10 +6,10 @@ import (
 )
 
 func TestCard(t *testing.T) {
-	cards1 := []*Card {&Card{Point: THREE}, &Card{Point: FOUR}, &Card{Point: THREE}, &Card{Point: FOUR}, &Card{Point: FOUR}}
+	cards1 := []*Card {{Point: THREE}, {Point: FOUR}, {Point: THREE}, {Point: FOUR}, {Point: FOUR}}
 	Sort(cards1)
 	t.Log(cards1)
-	cards2 := []*Card {&Card{Point: TWO}, &Card{Point: THREE}, &Card{Point: THREE}, &Card{Point: THREE}, &Card{Point: TWO}}
+	cards2 := []*Card {{Point: TWO}, {Point: THREE}, {Point: THREE}, {Point: THREE}, {Point: TWO}}
 	Sort(cards2)
 	t.Log(cards2)
 	t.Log(Valid(cards2))

@@ -2,27 +2,28 @@ package main
 
 import (
 	"bufio"
-	"fmt"
+	"encoding/json"
+	"log"
 	"net"
 	"strings"
-
-	"github.com/TwiN/go-color"
+	"time"
 )
 
 type client struct {
-	nick     string
+	Nick     string `json:"nick"`
 	commands chan<- command
-	conn     net.Conn
+	Conn     net.Conn `json:"conn"`
 }
 
 func (c *client) readInput() {
-	reader := bufio.NewReader(c.conn)
+	reader := bufio.NewReader(c.Conn)
 	for {
 		msg, err := reader.ReadString('\n')
 		if err != nil {
 			return
 		}
 		msg = strings.Trim(msg, "\r\n ")
+		log.Printf("%v (%v) -> %v", c.Nick, c.Conn.RemoteAddr(), msg)
 		if len(msg) > 0 && msg[0] != '/' {
 			c.commands <- command{CMD_MESSAGE, c, []string{msg}}
 			continue
@@ -54,14 +55,47 @@ func (c *client) readInput() {
 	}
 }
 
-func (c *client) msg(msg string) {
-	c.conn.Write([]byte(fmt.Sprintf("%s\n", msg)))
+type messageType int
+
+const (
+	MSG_MESSAGE messageType = iota
+	MSG_ERROR
+	MSG_PLAYER_STATUS
+	MSG_INFO
+	MSG_CHAT
+	MSG_ROOM_INFO
+)
+
+type Message struct {
+	MsgType messageType `json:"msg_type"`
+	Content string      `json:"content"`
+	Sender  string      `json:"sender"`
 }
 
-func (c *client) prompt() {
-	c.conn.Write([]byte(color.With(color.Bold, "> ")))
+func (c *client) msg(msgType messageType, msg string) {
+	// c.Conn.Write([]byte(fmt.Sprintf("%s\n", msg)))
+	byts, err := json.Marshal(Message{msgType, msg, c.Nick})
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	log.Println(string(byts))
+	c.Conn.Write([]byte(string(byts) + "\n"))
+	time.Sleep(100 * time.Millisecond)
+	log.Printf("%v (%v) <- %v", c.Nick, c.Conn.RemoteAddr(), strings.Trim(msg, "\r\n\b "))
 }
 
-func (c *client) err(err error) {
-	c.conn.Write([]byte(color.With(color.Red, fmt.Sprintf("Err: %s\n", err.Error()))))
+// func (c *client) prompt() {
+// 	c.Conn.Write([]byte("> "))
+// }
+
+func (c *client) err(e error) {
+	// c.Conn.Write([]byte(color.InRed(fmt.Sprintf("Err: %s\n", e.Error()))))
+	byts, err := json.Marshal(Message{MSG_INFO, e.Error(), c.Nick})
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	c.Conn.Write([]byte(string(byts) + "\n"))
+	log.Printf("%v (%v) <- %v", c.Nick, c.Conn.RemoteAddr(), strings.Trim(e.Error(), "\r\n\b "))
 }

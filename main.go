@@ -9,12 +9,19 @@ import (
 )
 
 func main() {
+	f, err := os.OpenFile("server.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+	if err != nil {
+		log.Fatalf("unable to open log file: %s", err.Error())
+	}
+	defer f.Close()
+	// log.SetOutput(f)
+	log.Println("______________________")
 	listen, err := net.Listen("tcp", "0.0.0.0:8888")
 	if err != nil {
 		log.Fatalf("unable to start server: %s", err.Error())
 	}
 	defer listen.Close()
-	log.Println("server started on :8888")
+	log.Println("server started on port 8888")
 
 	server := newServer()
 
@@ -34,7 +41,7 @@ func main() {
 		if err != nil {
 			log.Printf("unable to accept connection: %s", err.Error())
 		}
-		conn.SetDeadline(time.Now().Add(120 * time.Second))
+		conn.SetDeadline(time.Now().Add(300 * time.Second))
 		if err != nil {
 			log.Printf("unable to set keep alive: %s", err.Error())
 		}
