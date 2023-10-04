@@ -34,6 +34,11 @@ func (d Deck) Size() int {
 	return d.current + 1
 }
 
+func (d *Deck) Refresh() {
+	d.current = NUM_CARDS - 1
+	d.Shuffle()
+}
+
 func (d *Deck) Shuffle() {
 	for i := d.current; i >= 0; i-- {
 		idx := R.Intn(i + 1)

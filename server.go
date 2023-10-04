@@ -39,17 +39,18 @@ func (s *server) newClient(conn net.Conn) {
 	// s.members[conn.RemoteAddr()] = c
 	s.members.Store(conn.RemoteAddr(), c)
 	nickname, err := bufio.NewReader(conn).ReadString('\n')
-	for nickname == "\n" || err != nil {
+	nickname = strings.Trim(nickname, "\r\n")
+	for nickname == "" || err != nil {
 		c.Conn.Write([]byte(""))
 		nickname, err = bufio.NewReader(conn).ReadString('\n')
+		nickname = strings.Trim(nickname, "\r\n")
 	}
 	c.Conn.Write([]byte("ok\n"))
 	nickname = strings.Trim(nickname, "\n")
 	c.Nick = nickname
 	time.Sleep(500 * time.Millisecond)
 	c.msg(MSG_MESSAGE, "> welcome to the server, "+c.Nick+"\n  type /ready to join the games")
-	// c.msg(MSG_MESSAGE, fmt.Sprintf("online players: %v", lenSyncMap(&s.members)))
-	s.broadcast(MSG_MESSAGE, c, fmt.Sprintf("%s join the room", c.Nick))
+	s.broadcast(MSG_MESSAGE, c, fmt.Sprintf("> %s join the room", c.Nick))
 	s.broadcast(MSG_ROOM_INFO, nil, util.State(s.game.State)+"_"+strings.Join(s.listPlayers(), "\n"))
 	c.readInput()
 }
@@ -65,7 +66,6 @@ func (s *server) removeClosedClient() {
 					errors.Is(err, io.EOF) &&
 					errors.Is(err, syscall.EPIPE)) {
 					log.Println("client has disconnected:", addr)
-					// s.broadcast(nil, fmt.Sprintf("%s left the room", client.nick))
 					client.Conn.Close()
 					s.members.Delete(addr)
 				}
@@ -83,13 +83,11 @@ func (s *server) runCommands() {
 		switch command.id {
 		case CMD_EMPTY_LINE:
 			if s.game.State != util.STATE_PLAYING || sender.Conn.RemoteAddr() == s.game.CurrentPlayer.Conn.RemoteAddr() {
-				// sender.prompt()
 			}
 		case CMD_MESSAGE:
 			sender.msg(MSG_CHAT, sender.Nick+": "+command.args[0])
 			s.broadcast(MSG_CHAT, sender, sender.Nick+": "+command.args[0])
 			if s.game.State != util.STATE_PLAYING || sender.Conn.RemoteAddr() == s.game.CurrentPlayer.Conn.RemoteAddr() {
-				// sender.prompt()
 			}
 		case CMD_LIST_COMMANDS:
 			s.listCommands(sender)
@@ -108,27 +106,22 @@ func (s *server) runCommands() {
 				s.viewCards(sender, command.args)
 			} else {
 				sender.err(errors.New("> you must first join a game"))
-				// sender.prompt()
 			}
 		case CMD_USE_CARDS:
 			if s.game.State == util.STATE_PLAYING && s.game.ContainsPlayer(sender.Conn.RemoteAddr()) {
 				s.useCards(sender, command.args)
 			} else {
 				sender.err(errors.New("> you must first join a game"))
-				// sender.prompt()
 			}
 		case CMD_PASS:
 			if s.game.State == util.STATE_PLAYING && s.game.ContainsPlayer(sender.Conn.RemoteAddr()) {
 				s.pass(sender)
 			} else {
 				sender.err(errors.New("> you must first join a game"))
-				// sender.prompt()
 			}
 		case CMD_UNKNOWN:
 			sender.err(errors.New("> unknown command: " + command.args[0]))
-			if s.game.State == util.STATE_WAITING || sender.Conn.RemoteAddr() == s.game.CurrentPlayer.Conn.RemoteAddr() {
-				// sender.prompt()
-			}
+
 		}
 	}
 }
@@ -144,14 +137,12 @@ func (s *server) gameLoop() {
 			time.Sleep(1 * time.Second)
 			s.play()
 		case util.STATE_OVER:
+			time.Sleep(500 * time.Millisecond)
 			s.broadcast(MSG_MESSAGE, nil, "> type /ready to start a new game or /quit to quit")
 			numPlayers := s.game.NumPlayers
 			s.game = util.NewGame()
 			s.game.NumPlayers = numPlayers
-			s.members.Range(func(_, c any) bool {
-				s.game.AddPlayer(c.(*client).Conn, c.(*client).Nick)
-				return true
-			})
+			s.broadcast(MSG_ROOM_INFO, nil, util.State(s.game.State)+"_"+strings.Join(s.listPlayers(), "\n"))
 		}
 	}
 }
@@ -168,7 +159,7 @@ func (s *server) play() {
 		return true
 	})
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(500 * time.Millisecond)
 
 	landlordIdx := util.R.Intn(g.NumPlayers)
 	g.Landlord = players[landlordIdx]
@@ -206,24 +197,26 @@ func (s *server) play() {
 			break
 		}
 		s.broadcast(MSG_ROOM_INFO, nil, util.State(s.game.State)+"_"+strings.Join(s.listPlayers(), "\n"))
-		statusStr := g.CurrentPlayer.Highlight(g.LastUsedCards)
-		if g.CurrentPlayer.Position == util.LANDLORD {
-			statusStr = "landlord_" + statusStr
-		} else {
-			statusStr = "farmer_" + statusStr
-		}
 		c.(*client).msg(MSG_INFO, "> it's your turn")
 		time.Sleep(300 * time.Millisecond)
 		if len(g.LastUsedCards) > 0 {
-			c.(*client).msg(MSG_INFO, fmt.Sprintf("  you have to beat %v from %v", g.LastUsedCards, g.LastPlayer.Nick))
+			c.(*client).msg(MSG_INFO, fmt.Sprintf("  you have to beat %v from %v", util.CardsToString(g.LastUsedCards), g.LastPlayer.Nick))
 		} else {
 			c.(*client).msg(MSG_INFO, "  you can play any cards")
 		}
 		s.viewCards(c.(*client), []string{})
+		if len(g.CurrentPlayer.Recommend(s.game.LastUsedCards)) == 0 {
+			log.Println(s.game.LastUsedCards)
+			c.(*client).msg(MSG_INFO, "> you can't beat the last player")
+		} else {
+			c.(*client).msg(MSG_INFO, fmt.Sprintf("> recommend: %v", g.CurrentPlayer.Recommend(g.LastUsedCards)))
+		}
 		s.broadcast(MSG_INFO, c.(*client), fmt.Sprintf("> waiting for %s's action...", c.(*client).Nick))
 
 		cards := <-g.CurrentUsedCards
 		if g.PlayerNum != g.NumPlayers {
+			log.Println("ln 237")
+			log.Println(g.PlayerNum, g.NumPlayers)
 			break
 		}
 		if len(g.CurrentPlayer.Cards) == 0 {
@@ -268,17 +261,17 @@ func (s *server) listCommands(sender *client) {
    /pass: pass your current turn
    /quit: quit the game`
 	sender.msg(MSG_MESSAGE, msg)
-	if s.game.State == util.STATE_WAITING || sender.Conn.RemoteAddr() == s.game.CurrentPlayer.Conn.RemoteAddr() {
-		// sender.prompt()
-	}
 }
 
 func (s *server) listPlayers() []string {
 	var players []string
 	s.members.Range(func(_, c any) bool {
+		if c.(*client).Nick == "#anonymous" {
+			return true
+		}
 		switch s.game.State {
 		case util.STATE_WAITING:
-			if _, ok := s.game.Players.Load(c.(*client).Conn.RemoteAddr()); ok {
+			if player, ok := s.game.Players.Load(c.(*client).Conn.RemoteAddr()); ok && player.(*util.Player).IsReady {
 				players = append(players, " - "+c.(*client).Nick+" (ready)")
 			} else {
 				players = append(players, " - "+c.(*client).Nick)
@@ -345,15 +338,16 @@ func (s *server) ready(c *client) {
 
 func (s *server) viewCards(c *client, args []string) {
 	player, _ := s.game.Players.Load(c.Conn.RemoteAddr())
+	if _, ok := player.(*util.Player); !ok {
+		return
+	}
 	msg := player.(*util.Player).Highlight(s.game.LastUsedCards)
 	if player.(*util.Player).Position == util.LANDLORD {
 		msg = "landlord_" + msg
 	} else {
 		msg = "farmer_" + msg
 	}
-	if len(player.(*util.Player).Recommend(s.game.LastUsedCards)) == 0 {
-		c.msg(MSG_INFO, "> you have no cards to beat the last player")
-	}
+
 	c.msg(MSG_PLAYER_STATUS, msg)
 }
 
@@ -405,14 +399,12 @@ func (s *server) useCards(c *client, args []string) {
 	}
 	if len(invalidCards) > 0 {
 		c.err(errors.New(fmt.Sprintf("> invalid cards: %v", invalidCards)))
-		// c.prompt()
 		cmd := <-s.commands
 		s.commands <- cmd
 		return
 	}
 	if len(cards) == 0 {
 		c.err(errors.New("> please select at least one card"))
-		// c.prompt()
 		cmd := <-s.commands
 		s.commands <- cmd
 		return
@@ -422,12 +414,12 @@ func (s *server) useCards(c *client, args []string) {
 	err := player.(*util.Player).Use(cards, lastCards)
 	if err != nil {
 		c.err(err)
-		// c.prompt()
 	} else {
 		s.game.CurrentUsedCards <- cards
 		s.game.LastUsedCards = cards
 		s.game.LastPlayer = player.(*util.Player)
 		c.msg(MSG_MESSAGE, fmt.Sprintf("> you used the cards: %v", cards))
+		s.viewCards(c, []string{})
 		s.broadcast(MSG_MESSAGE, c, fmt.Sprintf("> %s used the cards: %v (%v remaining)", c.Nick, cards, len(s.game.CurrentPlayer.Cards)))
 	}
 

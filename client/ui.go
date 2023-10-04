@@ -30,12 +30,12 @@ func drawSidebar() (*tview.Grid, *tview.TextView, *tview.TextView, *tview.TextVi
 	roomInfoView.SetTextColor(bgColor)
 	setBoxAttr(roomInfoView.Box, "RoomInfo")
 
-	chatView := tview.NewTextView().SetDynamicColors(true)
+	chatView := tview.NewTextView().SetDynamicColors(false)
 	chatView.SetBackgroundColor(bgColor)
 	chatView.SetTextColor(bgColor)
 	setBoxAttr(chatView.Box, "Chat")
 
-	infoView := tview.NewTextView().SetDynamicColors(true)
+	infoView := tview.NewTextView().SetDynamicColors(false)
 	infoView.SetBackgroundColor(bgColor)
 	infoView.SetTextColor(bgColor)
 	setBoxAttr(infoView.Box, "Info")
@@ -50,14 +50,14 @@ func drawSidebar() (*tview.Grid, *tview.TextView, *tview.TextView, *tview.TextVi
 
 func drawMainPanel() (*tview.Grid, *tview.TextView, *tview.TextView, *tview.InputField) {
 	mainPanelGrid := tview.NewGrid().SetRows(-1, 6, 3).SetBorders(false)
-	messagesView := tview.NewTextView().SetDynamicColors(true)
+	messagesView := tview.NewTextView().SetDynamicColors(false)
 	messagesView.SetBackgroundColor(bgColor)
 	messagesView.SetTextColor(bgColor)
 	setBoxAttr(messagesView.Box, "Messages")
 
-	statusView := tview.NewTextView().SetDynamicColors(true).SetRegions(true).SetToggleHighlights(true)
+	statusView := tview.NewTextView().SetDynamicColors(false).SetRegions(true).SetToggleHighlights(true)
 	statusView.SetBackgroundColor(bgColor)
-	statusView.SetTextColor(bgColor)
+	statusView.SetTextColor(tcell.ColorDefault)
 	setBoxAttr(statusView.Box, "Status")
 
 	// setBoxAttr(infoView.Box, "Info")
@@ -83,7 +83,7 @@ func draw(app *tview.Application) *tview.Grid {
 
 	input.SetDoneFunc(func(key tcell.Key) {
 		if key == tcell.KeyEnter {
-			msg := input.GetText()
+			msg := strings.Trim(input.GetText(), "\r\n")
 			sendChan <- msg
 
 			historyIdx = len(history)
@@ -153,12 +153,11 @@ func handleMessages(
 			cards := statusMsgs[1]
 			log.Println(cards)
 			statusStr := "Position: " + position + "\nCards: " + cards
-			highlights := statusView.GetHighlights()
-			log.Println(highlights)
+			log.Println(statusStr)
+			statusView.Highlight("0")
 			statusView.SetText(statusStr).SetChangedFunc(func() {
 				app.Draw()
 			})
-			statusView.Highlight(highlights...)
 
 		case MSG_INFO:
 			infoView.SetText(infoView.GetText(false) + " " + message.Content + "\n")
@@ -181,6 +180,6 @@ func handleMessages(
 			time.Sleep(1 * time.Second)
 			app.Stop()
 		}
-		app.Sync().Draw()
+		app.Draw()
 	}
 }

@@ -23,6 +23,8 @@ func (c Card) String() string {
 		color = "♥"
 	case DIAMOND:
 		color = "♦"
+	case NONE:
+		color = ""
 	}
 	switch c.Point {
 	case THREE:
@@ -57,6 +59,18 @@ func (c Card) String() string {
 		point = "JOKER"
 	}
 	return fmt.Sprintf("%v%v", color, point)
+}
+
+func CardsToString(cards []*Card) string {
+	str := "["
+	for _, c := range cards {
+		str += c.String() + " "
+	}
+	if len(str) > 1 {
+		str = str[:len(str)-1]
+	}
+	str += "]"
+	return str
 }
 
 func (c Card) Equal(c2 Card) bool {
@@ -287,6 +301,9 @@ func isTripleWithTwo(cards []*Card) bool {
 		return false
 	}
 	if cards[0].Point != cards[1].Point || cards[0].Point != cards[2].Point {
+		return false
+	}
+	if cards[3].Point != cards[4].Point {
 		return false
 	}
 	return true

@@ -2,7 +2,6 @@ package util
 
 import (
 	"errors"
-	"fmt"
 	"net"
 	"strings"
 
@@ -44,15 +43,15 @@ func (p *Player) Use(cardsInfo []*Card, lastCardsInfo []*Card) error {
 	Sort(cardsInfo)
 	Sort(lastCardsInfo)
 	if !Valid(cardsInfo) {
-		return errors.New("invalid cards")
+		return errors.New("> invalid cards")
 	}
 
 	if !Contains(p.Cards, cardsInfo) {
-		return errors.New("you don't have the cards")
+		return errors.New("> you don't have the cards")
 	}
 
 	if !CompareTo(cardsInfo, lastCardsInfo) {
-		return errors.New("cards can't beat last played cards")
+		return errors.New("> cards can't beat last played cards")
 	}
 
 	var removedCardsIdx []int
@@ -92,11 +91,14 @@ func (p *Player) Recommend(lastCards []*Card) []*Card {
 		}
 		idx--
 	}
-	for i := len(p.Cards) - 1; i >= lenth-1; i-- {
-		cards := p.Cards[i-lenth+1 : i+1]
+	for i := len(p.Cards) - 1; i >= 4-1; i-- {
+		cards := p.Cards[i-4+1 : i+1]
 		if isBomb(cards) {
 			return cards
 		}
+	}
+	if len(p.Cards) >= 2 && p.Cards[0].Point == RED_JOKER && p.Cards[1].Point == BLACK_JOKER {
+		return p.Cards[:2]
 	}
 	return []*Card{}
 }
@@ -149,24 +151,22 @@ func (p *Player) String() string {
 		cards = append(cards, p.Cards[i].String())
 	}
 
-	return "[" + strings.Join(cards, ", ") + "]"
+	return "[" + strings.Join(cards, " ") + "]"
 }
 
 func (p *Player) Highlight(lastCards []*Card) string {
 	var cards []string
 	recommends := p.Recommend(lastCards)
-	numSelection := 1
 	for i := 0; i < len(p.Cards); i++ {
 		if slices.ContainsFunc(recommends, func(c *Card) bool {
 			return c.Point == p.Cards[i].Point && c.Color == p.Cards[i].Color
 		}) {
-			// cards = append(cards, color.InBold(color.InCyan(p.Cards[i].String())))
-			cards = append(cards, fmt.Sprintf(`["%v"]%s[""]`,  numSelection, p.Cards[i].String()))
-			numSelection++
+			// cards = append(cards, fmt.Sprintf(`["0"]%s[""]`, p.Cards[i].String()))
+			cards = append(cards, p.Cards[i].String())
 		} else {
 			cards = append(cards, p.Cards[i].String())
 		}
 	}
 
-	return "[" + strings.Join(cards, ", ") + "]"
+	return "[" + strings.Join(cards, " ") + "]"
 }
