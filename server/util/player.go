@@ -34,9 +34,14 @@ func NewPlayer(conn net.Conn, nick string) *Player {
 }
 
 // Deal n cards from the deck.
-func (p *Player) Deal(d *Deck, n int) {
-	p.Cards = append(p.Cards, d.Deal(n)...)
+func (p *Player) Deal(d *Deck, n int) (err error) {
+	dealtCards, err := d.Deal(n)
+	if err != nil {
+		return
+	}
+	p.Cards = append(p.Cards, dealtCards...)
 	p.Sort()
+	return
 }
 
 func (p *Player) Use(cardsInfo []*Card, lastCardsInfo []*Card) error {

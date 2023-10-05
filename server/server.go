@@ -1,11 +1,11 @@
-package main
+package server
 
 import (
 	"bufio"
 	"errors"
 	"fmt"
 	"io"
-	"landlord/util"
+	"landlord/server/util"
 	"log"
 	"net"
 	"strings"
@@ -21,7 +21,7 @@ type server struct {
 	game    *util.Game
 }
 
-func newServer() *server {
+func NewServer() *server {
 	return &server{
 		commands: make(chan command, 1),
 		// members:  make(map[net.Addr]*client),
@@ -30,7 +30,7 @@ func newServer() *server {
 	}
 }
 
-func (s *server) newClient(conn net.Conn) {
+func (s *server) NewClient(conn net.Conn) {
 	c := &client{
 		Nick:     "#anonymous",
 		commands: s.commands,
@@ -55,7 +55,7 @@ func (s *server) newClient(conn net.Conn) {
 	c.readInput()
 }
 
-func (s *server) removeClosedClient() {
+func (s *server) RemoveClosedClient() {
 	for {
 		s.members.Range(func(addr, c any) bool {
 			addr, ok1 := addr.(net.Addr)
@@ -76,19 +76,17 @@ func (s *server) removeClosedClient() {
 
 }
 
-func (s *server) runCommands() {
+func (s *server) RunCommands() (err error) {
 	for command := range s.commands {
 		sender := command.sender
 		sender.Conn.SetDeadline(time.Now().Add(300 * time.Second))
 		switch command.id {
-		case CMD_EMPTY_LINE:
-			if s.game.State != util.STATE_PLAYING || sender.Conn.RemoteAddr() == s.game.CurrentPlayer.Conn.RemoteAddr() {
-			}
 		case CMD_MESSAGE:
-			sender.msg(MSG_CHAT, sender.Nick+": "+command.args[0])
-			s.broadcast(MSG_CHAT, sender, sender.Nick+": "+command.args[0])
-			if s.game.State != util.STATE_PLAYING || sender.Conn.RemoteAddr() == s.game.CurrentPlayer.Conn.RemoteAddr() {
+			err = sender.msg(MSG_CHAT, sender.Nick+": "+command.args[0])
+			if err != nil {
+				return err
 			}
+			s.broadcast(MSG_CHAT, sender, sender.Nick+": "+command.args[0])
 		case CMD_LIST_COMMANDS:
 			s.listCommands(sender)
 		case CMD_LIST_PLAYERS:
@@ -124,9 +122,10 @@ func (s *server) runCommands() {
 
 		}
 	}
+	return
 }
 
-func (s *server) gameLoop() {
+func (s *server) GameLoop() (err error) {
 	for {
 		switch s.game.State {
 		case util.STATE_WAITING:
@@ -135,7 +134,11 @@ func (s *server) gameLoop() {
 			}
 		case util.STATE_PLAYING:
 			time.Sleep(1 * time.Second)
-			s.play()
+			err = s.play()
+			if err != nil {
+				log.Println(err)
+				return
+			}
 		case util.STATE_OVER:
 			time.Sleep(500 * time.Millisecond)
 			s.broadcast(MSG_MESSAGE, nil, "> type /ready to start a new game or /quit to quit")
@@ -147,17 +150,23 @@ func (s *server) gameLoop() {
 	}
 }
 
-func (s *server) play() {
+func (s *server) play() (err error) {
 	var players []*util.Player
 	g := s.game
 	g.Players.Range(func(_, player any) bool {
 		if player, ok := player.(*util.Player); ok {
-			player.Deal(&g.Deck, 17)
+			err = player.Deal(&g.Deck, 17)
+			if err != nil {
+				return false
+			}
 			player.Sort()
 			players = append(players, player)
 		}
 		return true
 	})
+	if err != nil {
+		return err
+	}
 
 	time.Sleep(500 * time.Millisecond)
 
@@ -180,11 +189,18 @@ func (s *server) play() {
 	s.members.Range(func(_, c any) bool {
 		if player, ok := g.Players.Load(c.(*client).Conn.RemoteAddr()); ok {
 			if player.(*util.Player).Position != util.LANDLORD {
-				c.(*client).msg(MSG_PLAYER_STATUS, "farmer_"+player.(*util.Player).String())
+				err = c.(*client).msg(MSG_PLAYER_STATUS, "farmer_"+player.(*util.Player).String())
+				if err != nil {
+					return false
+				}
 			}
 		}
 		return true
 	})
+	if err != nil {
+		return err
+	}
+
 	for {
 		g.CurrentPlayer = players[currentPlayerIdx]
 		if g.CurrentPlayer == g.LastPlayer {
@@ -234,6 +250,7 @@ func (s *server) play() {
 
 	}
 	log.Println("game ends")
+	return
 }
 
 func (s *server) broadcast(msgType messageType, sender *client, msg string) {
@@ -246,7 +263,6 @@ func (s *server) broadcast(msgType messageType, sender *client, msg string) {
 		}
 		member.(*client).msg(msgType, msg)
 		if s.game.State != util.STATE_PLAYING || (s.game.CurrentPlayer != nil && addr == s.game.CurrentPlayer.Conn.RemoteAddr()) {
-			// member.(*client).prompt()
 		}
 		return true
 	})

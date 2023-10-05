@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"bufio"
@@ -73,28 +73,30 @@ type Message struct {
 	Sender  string      `json:"sender"`
 }
 
-func (c *client) msg(msgType messageType, msg string) {
+func (c *client) msg(msgType messageType, msg string) (err error) {
 	byts, err := json.Marshal(Message{msgType, msg, c.Nick})
 	if err != nil {
-		log.Println(err)
-		return
+		return 
 	}
-	c.Conn.Write([]byte(string(byts) + "\n"))
+	_, err = c.Conn.Write([]byte(string(byts) + "\n"))
+	if err != nil {
+		return 
+	}
 	time.Sleep(300 * time.Millisecond)
 	log.Printf("%v (%v) <- %v", c.Nick, c.Conn.RemoteAddr(), strings.Trim(msg, "\r\n\b "))
+	return
 }
 
-// func (c *client) prompt() {
-// 	c.Conn.Write([]byte("> "))
-// }
-
-func (c *client) err(e error) {
+func (c *client) err(e error) (err error) {
 
 	byts, err := json.Marshal(Message{MSG_INFO, e.Error(), c.Nick})
 	if err != nil {
-		log.Println(err)
 		return
 	}
-	c.Conn.Write([]byte(string(byts) + "\n"))
+	_, err = c.Conn.Write([]byte(string(byts) + "\n"))
+	if err != nil {
+		return
+	}
 	log.Printf("%v (%v) <- %v", c.Nick, c.Conn.RemoteAddr(), strings.Trim(e.Error(), "\r\n\b "))
+	return
 }

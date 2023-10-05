@@ -34,11 +34,6 @@ func (d Deck) Size() int {
 	return d.current + 1
 }
 
-func (d *Deck) Refresh() {
-	d.current = NUM_CARDS - 1
-	d.Shuffle()
-}
-
 func (d *Deck) Shuffle() {
 	for i := d.current; i >= 0; i-- {
 		idx := R.Intn(i + 1)
@@ -46,16 +41,15 @@ func (d *Deck) Shuffle() {
 	}
 }
 
-func (d *Deck) Deal(n int) []*Card {
+func (d *Deck) Deal(n int) (cards []*Card, err error) {
 	if n > d.Size() {
-		panic(fmt.Sprintf("failed to deal %v card(s) from deck of size %v", n, d.Size()))
+		return nil, fmt.Errorf("failed to deal %v card(s) from deck of size %v", n, d.Size())
 	}
-	var cards []*Card
 	for i := 0; i < n; i++ {
 		cards = append(cards, &d.Cards[d.current])
 		d.current--
 	}
-	return cards
+	return cards, nil
 }
 
 func (d *Deck) String() string {

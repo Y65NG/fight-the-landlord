@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"time"
+	"landlord/server"
 )
 
 func main() {
@@ -23,7 +24,7 @@ func main() {
 	defer listen.Close()
 	log.Println("server started on port 8888")
 
-	server := newServer()
+	server := server.NewServer()
 
 	args := os.Args[1:]
 	if len(args) > 0 {
@@ -32,9 +33,9 @@ func main() {
 		}
 	}
 
-	go server.runCommands()
-	go server.gameLoop()
-	go server.removeClosedClient()
+	go server.RunCommands()
+	go server.GameLoop()
+	go server.RemoveClosedClient()
 
 	for {
 		conn, err := listen.Accept()
@@ -47,6 +48,6 @@ func main() {
 		}
 
 		log.Printf("client has connected: %s", conn.RemoteAddr().String())
-		go server.newClient(conn)
+		go server.NewClient(conn)
 	}
 }
